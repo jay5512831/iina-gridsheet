@@ -110,6 +110,7 @@
     el("loadingDetail").textContent = detail || "";
     el("sheetWrap").hidden = true;
     el("regenerate").disabled = true;
+    el("saveToVideoDir").disabled = true;
     setActionsEnabled(false);
     setProgress(0, 1);
     busy = true;
@@ -123,9 +124,14 @@
     el("loadingDetail").textContent = message || "未知错误";
     el("sheetWrap").hidden = true;
     el("regenerate").disabled = false;
+    el("saveToVideoDir").disabled = false;
     setActionsEnabled(false);
     setStatus("生成失败，可调整网格后重试");
     busy = false;
+  }
+
+  function setSaveToggle(value) {
+    el("saveToVideoDir").checked = value !== false;
   }
 
   function renderMeta(meta) {
@@ -193,6 +199,7 @@
       el("meta").innerHTML = "";
     }
     showLoading(data.phase || "正在准备…", "");
+    setSaveToggle(data.saveToVideoDir);
     setStatus("正在生成 " + data.cols + "×" + data.rows + " 缩略图…");
     updateSavedPath("");
   });
@@ -210,6 +217,7 @@
     setActiveGrid(data.cols, data.rows);
     times = Array.isArray(data.times) ? data.times : [];
     canSeek = !!data.canSeek;
+    setSaveToggle(data.saveToVideoDir);
     renderMeta(data.meta);
     buildCells(data.cols, data.rows);
     updateSavedPath(data.savedPath);
@@ -220,6 +228,7 @@
       el("sheetWrap").hidden = false;
       el("placeholder").hidden = true;
       el("regenerate").disabled = false;
+      el("saveToVideoDir").disabled = false;
       setActionsEnabled(true);
       busy = false;
       setStatus(
@@ -241,7 +250,11 @@
   });
 
   api.onMessage("saved", function (data) {
-    if (data && data.path) updateSavedPath(data.path);
+    if (!data) return;
+    if (data.path) updateSavedPath(data.path);
+    if (typeof data.saveToVideoDir === "boolean") {
+      setSaveToggle(data.saveToVideoDir);
+    }
   });
 
   api.onMessage("toast", function (data) {
@@ -270,6 +283,10 @@
 
   el("savedPath").addEventListener("click", function () {
     if (savedPath) api.postMessage("reveal");
+  });
+
+  el("saveToVideoDir").addEventListener("change", function () {
+    api.postMessage("setSaveLocation", { toVideoDir: this.checked });
   });
 
   document.addEventListener("keydown", function (event) {

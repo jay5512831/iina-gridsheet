@@ -52,7 +52,8 @@ setTimeout(function () {
     "cols": 4,
     "rows": 3,
     "canSeek": True,
-    "savedPath": "/Users/mc/Pictures/多宫格缩略图/Demo.Movie.2026.2160p_4x3.png",
+    "saveToVideoDir": True,
+    "savedPath": "/Users/mc/Movies/Demo.Movie.2026.2160p_grid_4x3.png",
     "meta": {
         "title": "Demo.Movie.2026.2160p",
         "duration": 125.0,
@@ -63,6 +64,7 @@ setTimeout(function () {
         "count": 12,
         "elapsed": 1.4,
         "canSeek": True,
+        "saveToVideoDir": True,
     },
 }, ensure_ascii=False)
 

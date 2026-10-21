@@ -17,6 +17,7 @@ const REAL_HOME = process.env.HOME || "/Users/mc";
 const SAVE_DIR = "~/Pictures/多宫格缩略图";
 
 for (const dir of [OUT, TMP, DATA]) fs.mkdirSync(dir, { recursive: true });
+fs.rmSync(path.join(DATA, "settings.json"), { force: true });
 
 const lines = [];
 function log(message) {
@@ -202,6 +203,17 @@ function waitFor(predicate, timeoutMs, label) {
   if (!fs.existsSync(saved)) throw new Error("missing output " + saved);
   const stat = fs.statSync(saved);
   log("saved file " + saved + " " + Math.round(stat.size / 1024) + "KB");
+  if (path.dirname(saved) !== path.dirname(VIDEO)) {
+    throw new Error("default save location is not the video folder: " + saved);
+  }
+
+  log("switch save location to Pictures");
+  win.handlers.setSaveLocation({ toVideoDir: false });
+  await new Promise(function (r) { setTimeout(r, 1200); });
+  const picturesCopy = path.join(OUT, path.basename(saved));
+  if (!fs.existsSync(picturesCopy)) {
+    throw new Error("save location switch did not copy the image: " + picturesCopy);
+  }
 
   win.handlers.seek({ time: 45 });
   win.handlers.reveal();

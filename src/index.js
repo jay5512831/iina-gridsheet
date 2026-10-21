@@ -40,6 +40,7 @@ const state = {
   ffmpeg: null,
   ffprobe: null,
   frameSet: false,
+  saveToVideoDir: true,
 };
 
 function log(message) {
@@ -64,6 +65,9 @@ function loadSettings() {
       state.cols = cols;
       state.rows = rows;
     }
+    if (typeof data.saveToVideoDir === "boolean") {
+      state.saveToVideoDir = data.saveToVideoDir;
+    }
   } catch (e) {
     log("读取设置失败：" + e);
   }
@@ -71,7 +75,11 @@ function loadSettings() {
 
 function saveSettings() {
   try {
-    file.write(SETTINGS_PATH, JSON.stringify({ cols: state.cols, rows: state.rows }));
+    file.write(SETTINGS_PATH, JSON.stringify({
+      cols: state.cols,
+      rows: state.rows,
+      saveToVideoDir: state.saveToVideoDir,
+    }));
   } catch (e) {
     log("写入设置失败：" + e);
   }
@@ -103,6 +111,12 @@ function tail(text, lines) {
 function basename(path) {
   const parts = String(path).split(/[\\/]/);
   return parts[parts.length - 1] || "视频";
+}
+
+function dirname(path) {
+  const value = String(path);
+  const index = value.lastIndexOf("/");
+  return index > 0 ? value.slice(0, index) : "/";
 }
 
 function normalizeLocalPath(url) {
@@ -490,6 +504,7 @@ async function generate(options) {
       duration: info.duration,
       width: info.width,
       height: info.height,
+      saveToVideoDir: state.saveToVideoDir,
     });
 
     workDir = utils.resolvePath(TEMP_ROOT + "/run-" + runId + "-" + Date.now());
@@ -522,13 +537,31 @@ async function generate(options) {
     }
     if (runId !== state.runId) return;
 
-    const outDir = utils.resolvePath(SAVE_DIR);
-    await ensureDir(outDir);
-    const savedPath = outDir + "/" + safeBaseName(title) +
-      "_" + cols + "x" + rows + ".png";
-    const copy = await utils.exec("/bin/cp", ["-f", sheetPath, savedPath]);
-    if (copy.status !== 0) {
-      throw new Error("保存图片失败。" + tail(copy.stderr));
+    const fileName = safeBaseName(title) + "_grid_" + cols + "x" + rows + ".png";
+    let savedPath = null;
+    let saveFallback = false;
+
+    if (state.saveToVideoDir) {
+      const videoDir = dirname(videoPath);
+      const candidate = videoDir + "/" + fileName;
+      const result = await utils.exec("/bin/cp", ["-f", sheetPath, candidate]);
+      if (result.status === 0) {
+        savedPath = candidate;
+      } else {
+        saveFallback = true;
+        log("视频目录不可写，回退到图片目录：" + tail(result.stderr));
+      }
+    }
+
+    if (!savedPath) {
+      const outDir = utils.resolvePath(SAVE_DIR);
+      await ensureDir(outDir);
+      const candidate = outDir + "/" + fileName;
+      const result = await utils.exec("/bin/cp", ["-f", sheetPath, candidate]);
+      if (result.status !== 0) {
+        throw new Error("保存图片失败。" + tail(result.stderr));
+      }
+      savedPath = candidate;
     }
 
     const base64 = await utils.exec("/usr/bin/base64", ["-i", savedPath]);
@@ -549,6 +582,8 @@ async function generate(options) {
       count,
       elapsed,
       canSeek,
+      saveToVideoDir: state.saveToVideoDir,
+      saveFallback,
     };
 
     state.last = {
@@ -568,7 +603,15 @@ async function generate(options) {
       meta,
       savedPath,
       canSeek,
+      saveToVideoDir: state.saveToVideoDir,
     });
+
+    if (saveFallback) {
+      send("toast", {
+        text: "视频文件夹不可写，已保存到图片文件夹",
+        kind: "error",
+      });
+    }
 
     try {
       core.osd("多宫格缩略图：已生成 " + cols + "×" + rows + " 网格");
@@ -627,7 +670,7 @@ async function saveAs() {
     return;
   }
   const source = state.last.savedPath;
-  const dir = utils.resolvePath(SAVE_DIR);
+  const dir = dirname(source);
   await ensureDir(dir);
 
   const script = [
@@ -665,6 +708,53 @@ async function copyImage() {
     throw new Error("复制到剪贴板失败。" + tail(result.stderr));
   }
   send("toast", { text: "图片已复制到剪贴板" });
+}
+
+async function setSaveLocation(toVideoDir) {
+  const value = !!toVideoDir;
+  state.saveToVideoDir = value;
+  saveSettings();
+  send("toast", {
+    text: value ? "以后保存到视频所在文件夹" : "以后保存到图片文件夹",
+  });
+
+  if (!state.last || !state.last.savedPath) return;
+
+  const targetDir = value ? dirname(state.last.videoPath) : utils.resolvePath(SAVE_DIR);
+  if (!value) await ensureDir(targetDir);
+  const name = basename(state.last.savedPath);
+  const destination = targetDir + "/" + name;
+
+  if (destination === state.last.savedPath) {
+    send("saved", { path: destination, saveToVideoDir: value });
+    return;
+  }
+
+  const result = await utils.exec("/bin/cp", ["-f", state.last.savedPath, destination]);
+  if (result.status !== 0) {
+    if (value) {
+      // 视频目录不可写：保留设置，但当前图片仍放回图片目录
+      const fallbackDir = utils.resolvePath(SAVE_DIR);
+      await ensureDir(fallbackDir);
+      const fallback = fallbackDir + "/" + name;
+      const fallbackResult = await utils.exec(
+        "/bin/cp", ["-f", state.last.savedPath, fallback]
+      );
+      if (fallbackResult.status === 0) {
+        state.last.savedPath = fallback;
+        send("saved", { path: fallback, saveToVideoDir: value });
+        send("toast", {
+          text: "视频文件夹不可写，仍保存到图片文件夹",
+          kind: "error",
+        });
+        return;
+      }
+    }
+    throw new Error("无法移动保存位置。" + tail(result.stderr));
+  }
+
+  state.last.savedPath = destination;
+  send("saved", { path: destination, saveToVideoDir: value });
 }
 
 function revealImage() {
@@ -723,6 +813,12 @@ function registerWindowHandlers() {
   });
 
   standaloneWindow.onMessage("reveal", revealImage);
+
+  standaloneWindow.onMessage("setSaveLocation", function (data) {
+    setSaveLocation(data && data.toVideoDir).catch(function (error) {
+      send("toast", { text: error.message || String(error), kind: "error" });
+    });
+  });
 
   standaloneWindow.onMessage("seek", function (data) {
     seekTo(data && data.time);

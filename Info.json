@@ -1,7 +1,7 @@
 {
   "name": "多宫格缩略图",
   "identifier": "io.github.jay5512831.gridsheet",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "在 IINA 内为当前视频生成多宫格缩略图（联系表）：可点击画面跳转到对应时间、复制图片、另存为 PNG。",
   "author": {
     "name": "jay5512831",
@@ -13,5 +13,5 @@
     "file-system"
   ],
   "ghRepo": "jay5512831/iina-gridsheet",
-  "ghVersion": 1
+  "ghVersion": 2
 }
