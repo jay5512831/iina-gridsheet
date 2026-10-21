@@ -108,7 +108,7 @@ git clone https://github.com/jay5512831/iina-gridsheet.git
 ```sh
 python3 build_ui.py                 # 重新生成 ui/window.html
 node tests/mock-run.js              # 抽帧 → 拼图 → 保存 → 消息 全流程测试
-./scripts/package.sh                # 输出 dist/多宫格缩略图-<version>.iinaplgz
+./scripts/package.sh                # 输出 dist/GridSheet-<version>.iinaplgz
 ```
 
 调试提示：`standaloneWindow.loadFile()` 会清空通过 `onMessage` 注册的监听器，因此本插件在每次 `loadFile` 之后重新注册监听器（见 `src/index.js` 的 `ensureWindow`）。
