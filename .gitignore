@@ -1,0 +1,10 @@
+.DS_Store
+build/
+dist/
+tests/out/
+tests/tmp/
+tests/data/
+tests/preview.html
+tests/run.log
+*.iinaplgz
+tests/preview.png

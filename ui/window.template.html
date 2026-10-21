@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>多宫格缩略图</title>
+  <style>
+/*__CSS__*/
+</style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="titleblock">
+        <div class="eyebrow">多宫格缩略图</div>
+        <h1 id="filename" class="filename">等待视频…</h1>
+      </div>
+      <div id="meta" class="meta"></div>
+    </header>
+
+    <div class="toolbar">
+      <div class="grid-picker" id="gridPicker" role="group" aria-label="网格大小"></div>
+      <div class="actions">
+        <button id="regenerate" class="btn" type="button">重新生成</button>
+        <button id="reveal" class="btn primary" type="button" disabled>在访达中显示</button>
+        <button id="copy" class="btn" type="button" disabled>复制图片</button>
+        <button id="saveAs" class="btn ghost" type="button" disabled>另存为…</button>
+      </div>
+    </div>
+
+    <main class="stage">
+      <div class="viewer">
+        <div class="sheet-wrap" id="sheetWrap" hidden>
+          <img id="sheet" alt="视频多宫格缩略图">
+          <div class="cells" id="cells"></div>
+        </div>
+        <div class="placeholder" id="placeholder">
+          <div class="spinner"></div>
+          <div class="loading-title" id="loadingTitle">正在准备…</div>
+          <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+          <div class="loading-detail" id="loadingDetail"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="statusbar">
+      <span id="status" class="status">点击任意画面可跳转到对应时间</span>
+      <span id="savedPath" class="saved-path" title=""></span>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script>
+/*__JS__*/
+</script>
+</body>
+</html>
