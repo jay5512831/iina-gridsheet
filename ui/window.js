@@ -111,6 +111,7 @@
     el("sheetWrap").hidden = true;
     el("regenerate").disabled = true;
     el("saveToVideoDir").disabled = true;
+    el("outputWidth").disabled = true;
     setActionsEnabled(false);
     setProgress(0, 1);
     busy = true;
@@ -125,6 +126,7 @@
     el("sheetWrap").hidden = true;
     el("regenerate").disabled = false;
     el("saveToVideoDir").disabled = false;
+    el("outputWidth").disabled = false;
     setActionsEnabled(false);
     setStatus("生成失败，可调整网格后重试");
     busy = false;
@@ -132,6 +134,10 @@
 
   function setSaveToggle(value) {
     el("saveToVideoDir").checked = value !== false;
+  }
+
+  function setOutputWidth(value) {
+    if (value) el("outputWidth").value = String(value);
   }
 
   function renderMeta(meta) {
@@ -142,7 +148,9 @@
     if (meta.duration > 0) {
       values.push(formatTime(meta.duration, meta.duration >= 3600));
     }
-    if (meta.width > 0 && meta.height > 0) {
+    if (meta.sheetWidth > 0 && meta.sheetHeight > 0) {
+      values.push("输出 " + meta.sheetWidth + "×" + meta.sheetHeight);
+    } else if (meta.width > 0 && meta.height > 0) {
       values.push(meta.width + "×" + meta.height);
     }
     if (meta.cols && meta.rows) {
@@ -200,6 +208,7 @@
     }
     showLoading(data.phase || "正在准备…", "");
     setSaveToggle(data.saveToVideoDir);
+    setOutputWidth(data.outputWidth);
     setStatus("正在生成 " + data.cols + "×" + data.rows + " 缩略图…");
     updateSavedPath("");
   });
@@ -218,6 +227,7 @@
     times = Array.isArray(data.times) ? data.times : [];
     canSeek = !!data.canSeek;
     setSaveToggle(data.saveToVideoDir);
+    setOutputWidth(data.outputWidth);
     renderMeta(data.meta);
     buildCells(data.cols, data.rows);
     updateSavedPath(data.savedPath);
@@ -229,6 +239,7 @@
       el("placeholder").hidden = true;
       el("regenerate").disabled = false;
       el("saveToVideoDir").disabled = false;
+      el("outputWidth").disabled = false;
       setActionsEnabled(true);
       busy = false;
       setStatus(
@@ -287,6 +298,12 @@
 
   el("saveToVideoDir").addEventListener("change", function () {
     api.postMessage("setSaveLocation", { toVideoDir: this.checked });
+  });
+
+  el("outputWidth").addEventListener("change", function () {
+    if (busy) return;
+    showLoading("正在按 " + this.value + " px 重新生成…", "");
+    api.postMessage("setOutputWidth", { width: Number(this.value) });
   });
 
   document.addEventListener("keydown", function (event) {

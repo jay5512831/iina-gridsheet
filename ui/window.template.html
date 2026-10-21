@@ -21,6 +21,15 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <div class="grid-picker" id="gridPicker" role="group" aria-label="网格大小"></div>
+        <label class="width-select" title="输出图片的宽度（像素）">
+          <span>输出宽度</span>
+          <select id="outputWidth">
+            <option value="1920">1920 px</option>
+            <option value="2560">2560 px</option>
+            <option value="3840">3840 px</option>
+            <option value="5120">5120 px</option>
+          </select>
+        </label>
         <label class="location-toggle" title="开启后，缩略图默认保存在视频所在文件夹；关闭则保存到图片文件夹">
           <input type="checkbox" id="saveToVideoDir">
           <span>保存到视频目录</span>

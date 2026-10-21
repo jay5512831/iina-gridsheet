@@ -9,7 +9,7 @@ STAGE="$ROOT/build/多宫格缩略图"
 rm -rf "$ROOT/build"
 mkdir -p "$STAGE/src" "$STAGE/ui" "$STAGE/docs"
 cp "$ROOT/Info.json" "$ROOT/README.md" "$ROOT/LICENSE" "$STAGE/"
-cp "$ROOT/src/index.js" "$STAGE/src/"
+cp "$ROOT"/src/*.js "$STAGE/src/"
 cp "$ROOT/ui/window.html" "$STAGE/ui/"
 cp "$ROOT/docs/preview.png" "$STAGE/docs/"
 

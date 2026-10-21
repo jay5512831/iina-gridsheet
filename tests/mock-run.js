@@ -207,6 +207,21 @@ function waitFor(predicate, timeoutMs, label) {
     throw new Error("default save location is not the video folder: " + saved);
   }
 
+  if (lastRender.meta.outputWidth !== 2560) {
+    throw new Error("unexpected default output width: " + lastRender.meta.outputWidth);
+  }
+  if (!(lastRender.meta.sheetWidth > 2500)) {
+    throw new Error("sheet is too small: " + lastRender.meta.sheetWidth);
+  }
+
+  log("change output width to 3840");
+  win.handlers.setOutputWidth({ width: 3840 });
+  await waitFor(function () { return renderCount >= 2 || failCount > 0; }, 120000, "width render");
+  if (failCount > 0) throw new Error("width change failed");
+  if (lastRender.meta.outputWidth !== 3840 || lastRender.meta.sheetWidth < 3800) {
+    throw new Error("width change not applied: " + JSON.stringify(lastRender.meta));
+  }
+
   log("switch save location to Pictures");
   win.handlers.setSaveLocation({ toVideoDir: false });
   await new Promise(function (r) { setTimeout(r, 1200); });
@@ -222,7 +237,7 @@ function waitFor(predicate, timeoutMs, label) {
 
   log("regenerate 5x4");
   win.handlers.regenerate({ cols: 5, rows: 4 });
-  await waitFor(function () { return renderCount >= 2 || failCount > 0; }, 120000, "second render");
+  await waitFor(function () { return renderCount >= 3 || failCount > 0; }, 120000, "second render");
   if (failCount > 0) throw new Error("regeneration failed");
   if (lastRender.cols !== 5 || lastRender.rows !== 4) throw new Error("grid not applied");
   if (!fs.existsSync(lastRender.savedPath)) throw new Error("missing 5x4 output");

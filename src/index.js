@@ -12,11 +12,15 @@
  *   5. 点击任意格子跳转到对应播放时间。
  */
 
-const { core, file, menu, standaloneWindow, utils, console: logger } = iina;
+const { core, event, file, global, menu, standaloneWindow, utils, console: logger } = iina;
 
 const SAVE_DIR = "~/Pictures/多宫格缩略图";
 const SETTINGS_PATH = "@data/settings.json";
 const TEMP_ROOT = "@tmp/gridsheet";
+
+const GRID_PADDING = 12;
+const GRID_MARGIN = 12;
+const OUTPUT_WIDTHS = [1920, 2560, 3840, 5120];
 
 
 const FONT_CANDIDATES = [
@@ -41,6 +45,7 @@ const state = {
   ffprobe: null,
   frameSet: false,
   saveToVideoDir: true,
+  outputWidth: 2560,
 };
 
 function log(message) {
@@ -68,6 +73,10 @@ function loadSettings() {
     if (typeof data.saveToVideoDir === "boolean") {
       state.saveToVideoDir = data.saveToVideoDir;
     }
+    const outputWidth = Number(data.outputWidth);
+    if (OUTPUT_WIDTHS.indexOf(outputWidth) >= 0) {
+      state.outputWidth = outputWidth;
+    }
   } catch (e) {
     log("读取设置失败：" + e);
   }
@@ -79,6 +88,7 @@ function saveSettings() {
       cols: state.cols,
       rows: state.rows,
       saveToVideoDir: state.saveToVideoDir,
+      outputWidth: state.outputWidth,
     }));
   } catch (e) {
     log("写入设置失败：" + e);
@@ -262,22 +272,17 @@ function even(n) {
   return Math.max(2, Math.round(n / 2) * 2);
 }
 
-function cellSize(width, height) {
-  const MAX = 480;
+function cellSize(width, height, cols, outputWidth) {
   let aspect = width > 0 && height > 0 ? width / height : 16 / 9;
   if (!isFinite(aspect) || aspect <= 0) aspect = 16 / 9;
-  let cw;
-  let ch;
-  if (aspect >= 1) {
-    cw = MAX;
-    ch = Math.round(MAX / aspect);
-  } else {
-    ch = MAX;
-    cw = Math.round(MAX * aspect);
-  }
-  cw = Math.max(240, Math.min(MAX, cw));
-  ch = Math.max(180, Math.min(MAX, ch));
-  return { cw: even(cw), ch: even(ch) };
+
+  const usable = outputWidth - GRID_MARGIN * 2 - GRID_PADDING * (cols - 1);
+  let cw = Math.floor(usable / cols);
+  cw = Math.max(240, Math.floor(cw / 2) * 2);
+  let ch = Math.max(120, Math.round(cw / aspect));
+  ch = Math.floor(ch / 2) * 2;
+
+  return { cw: cw, ch: ch };
 }
 
 function computeTimes(duration, count) {
@@ -491,7 +496,9 @@ async function generate(options) {
     const canSeek = videoPath === currentVideoPath();
     const count = cols * rows;
     const times = computeTimes(info.duration, count);
-    const cells = cellSize(info.width, info.height);
+    const cells = cellSize(info.width, info.height, cols, state.outputWidth);
+    const sheetWidth = cols * cells.cw + (cols - 1) * GRID_PADDING + GRID_MARGIN * 2;
+    const sheetHeight = rows * cells.ch + (rows - 1) * GRID_PADDING + GRID_MARGIN * 2;
     const withHours = info.duration >= 3600;
     const title = info.title || basename(videoPath);
 
@@ -505,6 +512,7 @@ async function generate(options) {
       width: info.width,
       height: info.height,
       saveToVideoDir: state.saveToVideoDir,
+      outputWidth: state.outputWidth,
     });
 
     workDir = utils.resolvePath(TEMP_ROOT + "/run-" + runId + "-" + Date.now());
@@ -528,7 +536,7 @@ async function generate(options) {
       "-start_number", "0",
       "-i", workDir + "/f_%03d.png",
       "-vf", "tile=" + cols + "x" + rows +
-        ":padding=12:margin=12:color=0x111114",
+        ":padding=" + GRID_PADDING + ":margin=" + GRID_MARGIN + ":color=0x111114",
       "-frames:v", "1",
       "-y", sheetPath,
     ]);
@@ -564,10 +572,24 @@ async function generate(options) {
       savedPath = candidate;
     }
 
-    const base64 = await utils.exec("/usr/bin/base64", ["-i", savedPath]);
+    let previewPath = savedPath;
+    if (sheetWidth > 2600) {
+      const preview = workDir + "/preview.jpg";
+      const previewResult = await utils.exec(state.ffmpeg, [
+        "-hide_banner", "-loglevel", "error",
+        "-i", savedPath,
+        "-vf", "scale=2000:-2:flags=lanczos",
+        "-q:v", "3",
+        "-y", preview,
+      ]);
+      if (previewResult.status === 0) previewPath = preview;
+    }
+
+    const base64 = await utils.exec("/usr/bin/base64", ["-i", previewPath]);
     if (base64.status !== 0) {
       throw new Error("读取生成的图片失败。" + tail(base64.stderr));
     }
+    const imageMime = previewPath.endsWith(".jpg") ? "image/jpeg" : "image/png";
     if (runId !== state.runId) return;
 
     const elapsed = Math.round((Date.now() - startedAt) / 100) / 10;
@@ -584,6 +606,9 @@ async function generate(options) {
       canSeek,
       saveToVideoDir: state.saveToVideoDir,
       saveFallback,
+      outputWidth: state.outputWidth,
+      sheetWidth,
+      sheetHeight,
     };
 
     state.last = {
@@ -596,7 +621,7 @@ async function generate(options) {
     };
 
     emit("render", {
-      image: "data:image/png;base64," + base64.stdout.replace(/\s+/g, ""),
+      image: "data:" + imageMime + ";base64," + base64.stdout.replace(/\s+/g, ""),
       times,
       cols,
       rows,
@@ -604,6 +629,7 @@ async function generate(options) {
       savedPath,
       canSeek,
       saveToVideoDir: state.saveToVideoDir,
+      outputWidth: state.outputWidth,
     });
 
     if (saveFallback) {
@@ -820,6 +846,19 @@ function registerWindowHandlers() {
     });
   });
 
+  standaloneWindow.onMessage("setOutputWidth", function (data) {
+    const width = Number(data && data.width);
+    if (OUTPUT_WIDTHS.indexOf(width) < 0) return;
+    state.outputWidth = width;
+    saveSettings();
+    const path = state.last ? state.last.videoPath : currentVideoPath();
+    if (!path) {
+      send("toast", { text: "输出宽度已设为 " + width + " px" });
+      return;
+    }
+    generate({ path, cols: state.cols, rows: state.rows });
+  });
+
   standaloneWindow.onMessage("seek", function (data) {
     seekTo(data && data.time);
   });
@@ -843,6 +882,26 @@ function registerMenu() {
   ));
 }
 
+let autoGlobalDone = false;
+
+function maybeAutoGenerateFromGlobal() {
+  if (autoGlobalDone) return;
+  try {
+    if (!global || typeof global.getLabel !== "function") return;
+    if (global.getLabel() !== "gridsheet-auto") return;
+    if (!core.status || core.status.idle) {
+      setTimeout(maybeAutoGenerateFromGlobal, 500);
+      return;
+    }
+    autoGlobalDone = true;
+    setTimeout(function () { generate({}); }, 700);
+  } catch (e) {
+    log("自动生成检查失败：" + e);
+  }
+}
+
 loadSettings();
 registerMenu();
+event.on("iina.file-loaded", maybeAutoGenerateFromGlobal);
+setTimeout(maybeAutoGenerateFromGlobal, 1200);
 log("插件已加载");

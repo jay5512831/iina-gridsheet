@@ -105,6 +105,33 @@ body {
   min-width: 0;
 }
 
+.width-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #a4a4ad;
+  white-space: nowrap;
+}
+
+.width-select select {
+  height: 27px;
+  padding: 0 6px;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: #202026;
+  color: #e8e8ee;
+  font: inherit;
+  font-size: 11.5px;
+  outline: none;
+  cursor: pointer;
+}
+
+.width-select select:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .location-toggle {
   display: flex;
   align-items: center;
@@ -506,6 +533,15 @@ body {
     <div class="toolbar">
       <div class="toolbar-left">
         <div class="grid-picker" id="gridPicker" role="group" aria-label="网格大小"></div>
+        <label class="width-select" title="输出图片的宽度（像素）">
+          <span>输出宽度</span>
+          <select id="outputWidth">
+            <option value="1920">1920 px</option>
+            <option value="2560">2560 px</option>
+            <option value="3840">3840 px</option>
+            <option value="5120">5120 px</option>
+          </select>
+        </label>
         <label class="location-toggle" title="开启后，缩略图默认保存在视频所在文件夹；关闭则保存到图片文件夹">
           <input type="checkbox" id="saveToVideoDir">
           <span>保存到视频目录</span>
@@ -655,6 +691,7 @@ body {
     el("sheetWrap").hidden = true;
     el("regenerate").disabled = true;
     el("saveToVideoDir").disabled = true;
+    el("outputWidth").disabled = true;
     setActionsEnabled(false);
     setProgress(0, 1);
     busy = true;
@@ -669,6 +706,7 @@ body {
     el("sheetWrap").hidden = true;
     el("regenerate").disabled = false;
     el("saveToVideoDir").disabled = false;
+    el("outputWidth").disabled = false;
     setActionsEnabled(false);
     setStatus("生成失败，可调整网格后重试");
     busy = false;
@@ -676,6 +714,10 @@ body {
 
   function setSaveToggle(value) {
     el("saveToVideoDir").checked = value !== false;
+  }
+
+  function setOutputWidth(value) {
+    if (value) el("outputWidth").value = String(value);
   }
 
   function renderMeta(meta) {
@@ -686,7 +728,9 @@ body {
     if (meta.duration > 0) {
       values.push(formatTime(meta.duration, meta.duration >= 3600));
     }
-    if (meta.width > 0 && meta.height > 0) {
+    if (meta.sheetWidth > 0 && meta.sheetHeight > 0) {
+      values.push("输出 " + meta.sheetWidth + "×" + meta.sheetHeight);
+    } else if (meta.width > 0 && meta.height > 0) {
       values.push(meta.width + "×" + meta.height);
     }
     if (meta.cols && meta.rows) {
@@ -744,6 +788,7 @@ body {
     }
     showLoading(data.phase || "正在准备…", "");
     setSaveToggle(data.saveToVideoDir);
+    setOutputWidth(data.outputWidth);
     setStatus("正在生成 " + data.cols + "×" + data.rows + " 缩略图…");
     updateSavedPath("");
   });
@@ -762,6 +807,7 @@ body {
     times = Array.isArray(data.times) ? data.times : [];
     canSeek = !!data.canSeek;
     setSaveToggle(data.saveToVideoDir);
+    setOutputWidth(data.outputWidth);
     renderMeta(data.meta);
     buildCells(data.cols, data.rows);
     updateSavedPath(data.savedPath);
@@ -773,6 +819,7 @@ body {
       el("placeholder").hidden = true;
       el("regenerate").disabled = false;
       el("saveToVideoDir").disabled = false;
+      el("outputWidth").disabled = false;
       setActionsEnabled(true);
       busy = false;
       setStatus(
@@ -831,6 +878,12 @@ body {
 
   el("saveToVideoDir").addEventListener("change", function () {
     api.postMessage("setSaveLocation", { toVideoDir: this.checked });
+  });
+
+  el("outputWidth").addEventListener("change", function () {
+    if (busy) return;
+    showLoading("正在按 " + this.value + " px 重新生成…", "");
+    api.postMessage("setOutputWidth", { width: Number(this.value) });
   });
 
   document.addEventListener("keydown", function (event) {

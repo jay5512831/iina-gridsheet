@@ -15,6 +15,7 @@
 - **点击跳转**：在预览窗口点任意一格，播放器跳到对应时间
 - **中文界面**：独立预览窗口，支持复制图片、在访达中显示、另存为
 - **默认存到视频目录**：缩略图和视频放在一起，方便一眼认出文件内容；窗口内可切换回图片目录
+- **输出宽度可调**：1920 / 2560 / 3840 / 5120 px，默认 2560 px，预览窗口里随时切换重新生成
 - **一条龙**：生成后自动保存为 PNG，并显示保存路径
 
 ## 环境要求
@@ -45,6 +46,12 @@ brew install ffmpeg
 jay5512831/iina-gridsheet
 ```
 
+### 安装不成功？
+
+1. **先确认入口位置**：插件不是独立 App，安装后出现在 IINA 菜单栏的 **插件** 菜单里；没有打开视频时，v1.2+ 也会显示「多宫格缩略图：选择视频并生成…」。
+2. 如果双击 `.iinaplgz` 没反应，打开 **IINA → 设置 → 插件 → 安装本地插件…**，选择下载的 `.iinaplgz`。
+3. 安装后需要**重启 IINA**；如果列表里有但菜单里没有，确认插件开关是打开的。
+
 ### 从源码加载（开发）
 
 ```sh
@@ -54,12 +61,12 @@ git clone https://github.com/jay5512831/iina-gridsheet.git
 
 ## 使用
 
-1. 用 IINA 打开一个本地视频
+1. 用 IINA 打开一个本地视频；还没打开视频时，可以先用 **插件 → 多宫格缩略图：选择视频并生成…**
 2. 菜单 **插件 → 为当前视频生成多宫格缩略图**，或按 `⌘⇧G`
 3. 也可以选 **插件 → 选择视频文件生成多宫格缩略图…**，不播放也能生成
 4. 预览窗口里：
    - 点画面：跳到对应时间
-   - 顶部切换网格：立即重新生成
+   - 顶部切换网格 / 输出宽度：立即重新生成
    - `在访达中显示` / `复制图片` / `另存为…`
    - `Esc` 关闭窗口，`⌘S` 另存为
 
@@ -94,6 +101,7 @@ git clone https://github.com/jay5512831/iina-gridsheet.git
 .
 ├── Info.json               # IINA 插件清单
 ├── src/index.js            # 主逻辑
+├── src/global.js           # 全局入口（无视频时也能选择文件）
 ├── ui/window.template.html # 窗口模板
 ├── ui/window.css
 ├── ui/window.js
@@ -102,6 +110,7 @@ git clone https://github.com/jay5512831/iina-gridsheet.git
 ├── tests/mock-run.js       # 无头模拟 IINA API，跑通全流程
 ├── tests/preview.py        # 生成窗口静态预览
 ├── scripts/package.sh      # 打 .iinaplgz 安装包
+├── scripts/install.sh      # 本地直接安装
 └── docs/preview.png
 ```
 
@@ -109,6 +118,7 @@ git clone https://github.com/jay5512831/iina-gridsheet.git
 python3 build_ui.py                 # 重新生成 ui/window.html
 node tests/mock-run.js              # 抽帧 → 拼图 → 保存 → 消息 全流程测试
 ./scripts/package.sh                # 输出 dist/GridSheet-<version>.iinaplgz
+./scripts/install.sh                # 安装最新 dist 包并重启 IINA
 ```
 
 调试提示：`standaloneWindow.loadFile()` 会清空通过 `onMessage` 注册的监听器，因此本插件在每次 `loadFile` 之后重新注册监听器（见 `src/index.js` 的 `ensureWindow`）。
@@ -126,8 +136,9 @@ node tests/mock-run.js              # 抽帧 → 拼图 → 保存 → 消息 �
 ## Roadmap
 
 - ~~v1.1：默认保存到视频所在目录；保存位置可配置；无写权限时回退到图片目录~~ ✅
-- **v1.2**：PotPlayer 风格设置面板（`Alt+N`）：列/行、单格宽度、边距、JPEG/PNG、质量、字体、显示信息
-- **v1.3**：批量处理文件夹、侧边栏常驻缩略图
+- ~~v1.2：输出宽度可调（1920–5120 px）；无视频时的全局入口~~ ✅
+- **v1.3**：边距 / JPEG 质量 / 字体 / 文件信息开关等可选设置
+- **v1.4**：批量处理文件夹、侧边栏常驻缩略图
 
 ## License
 
