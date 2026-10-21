@@ -17,5 +17,5 @@ cd "$ROOT/build"
 "$PLUGIN_CLI" pack "多宫格缩略图"
 
 mkdir -p "$ROOT/dist"
-mv "多宫格缩略图-${VERSION}.iinaplgz" "$ROOT/dist/"
-echo "built dist/多宫格缩略图-${VERSION}.iinaplgz"
+mv "多宫格缩略图-${VERSION}.iinaplgz" "$ROOT/dist/GridSheet-${VERSION}.iinaplgz"
+echo "built dist/GridSheet-${VERSION}.iinaplgz"

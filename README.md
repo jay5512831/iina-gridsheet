@@ -32,7 +32,7 @@ brew install ffmpeg
 
 ### 从 Release 安装（推荐）
 
-1. 下载 [最新 Release](https://github.com/jay5512831/iina-gridsheet/releases) 里的 `多宫格缩略图-*.iinaplgz`
+1. 下载 [最新 Release](https://github.com/jay5512831/iina-gridsheet/releases) 里的 `GridSheet-*.iinaplgz`
 2. 双击文件，按 IINA 提示安装
 3. 打开 **IINA → 设置 → 插件**，确认「多宫格缩略图」已启用，然后重启 IINA
 
