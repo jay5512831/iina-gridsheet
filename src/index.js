@@ -874,7 +874,7 @@ function registerMenu() {
   menu.addItem(menu.item(
     "为当前视频生成多宫格缩略图",
     generateForCurrent,
-    { keyBinding: "Meta+Shift+G" }
+    { keyBinding: "Ctrl+Meta+g" }
   ));
   menu.addItem(menu.item(
     "选择视频文件生成多宫格缩略图…",
